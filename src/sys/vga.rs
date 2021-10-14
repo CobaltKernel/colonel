@@ -12,6 +12,10 @@ pub const BUFFER_HEIGHT: usize = 25;
 
 const CGA_ADDR: usize = 0xB8000;
 
+
+pub const CRTC_ADDR: u16 = 0x3D4;
+pub const CRTC_DATA: u16 = 0x3D5;
+
 lazy_static! {
     static ref CGA_BUFFER: Mutex<&'static mut ScreenBuffer> = Mutex::new(ScreenBuffer::get_cga());
 }
@@ -81,7 +85,28 @@ impl Color16 {
             _ => panic!("Invalid Value, Must Be Between 0 & 15")
         }
     }
-}
+
+    pub fn from_ansi(code: u8) -> Color16 {
+        match code {
+            30 => Color16::Black,
+            31 => Color16::Red,
+            32 => Color16::Green,
+            33 => Color16::Brown,
+            34 => Color16::Blue,
+            35 => Color16::Magenta,
+            36 => Color16::Cyan,
+            37 => Color16::LightGray,
+            90 => Color16::DarkGray,
+            91 => Color16::LightRed,
+            92 => Color16::LightGreen,
+            93 => Color16::Yellow,
+            94 => Color16::LightBlue,
+            95 => Color16::Pink,
+            96 => Color16::LightCyan,
+            97 => Color16::White,
+            _  => Color16::Black, // Error
+        }
+    }}
 
 impl ColorAttrib {
     pub fn new(value: u8) -> Self {

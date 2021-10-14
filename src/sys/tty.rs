@@ -1,12 +1,16 @@
 use core::fmt::Write;
 use lazy_static::lazy_static;
 use spin::Mutex;
+use vte::{Parser, Perform};
+use crate::outb;
+
 use super::vga::{self, ColorAttrib, get_char, put_char};
 pub use super::vga::Color16;
 
 
 lazy_static! {
     static ref STDOUT: Mutex<TTY> = Mutex::new(TTY::new());
+    static ref PARSER: Mutex<Parser> = Mutex::new(Parser::new());
 }
 
 
@@ -50,9 +54,19 @@ impl TTY {
     }
 
     pub fn print_str(&mut self, text: &str) {
+        let mut parser = PARSER.lock();
         for chr in text.chars() {
-            self.print_char(chr);
+            parser.advance(self, chr as u8);
         }
+        self.update_cursor();
+    }
+
+    fn update_cursor(&self) {
+        let pos = self.row() * vga::width() + self.column();
+            outb!(vga::CRTC_ADDR, 0x0F);
+            outb!(vga::CRTC_DATA, (pos & 0x00FF) as u8);
+            outb!(vga::CRTC_ADDR, 0x0E);
+            outb!(vga::CRTC_DATA, ((pos >> 8) & 0xFF) as u8);
     }
 
     pub fn set_fg(&mut self, fg: Color16) {
@@ -73,14 +87,17 @@ impl TTY {
         self.column = x;
     }
 
+    #[inline(always)]
     pub fn column(&self) -> usize {
         self.column
     }
 
+    #[inline(always)]
     pub fn row(&self) -> usize {
         self.row
     }
 
+    #[inline(always)]
     pub fn style(&self) -> ColorAttrib {
         self.style
     }
@@ -117,3 +134,88 @@ impl Write for TTY {
         Ok(())
     }
 }
+
+impl Perform for TTY {
+    fn print(&mut self, c: char) {
+        self.print_char(c);
+    }
+
+    fn execute(&mut self, _byte: u8) {
+        self.print_char(_byte as char);
+    }
+
+    fn csi_dispatch(&mut self, params: &vte::Params, _: &[u8], _: bool, action: char) {
+        match action {
+            // Set Color
+            'm' => {
+                let mut fg = Color16::White;
+                let mut bg = Color16::Blue;
+
+                for param in params.iter() {
+                    match param[0] {
+                        0 => {fg = Color16::White; bg = Color16::Blue},
+                        30..=37 | 90..=97 => {
+                            fg = Color16::from_ansi(param[0] as u8);
+                        },
+                        40..=47 | 100..=107 => {
+                            bg = Color16::from_ansi((param[0] as u8) - 10);
+                        },
+                        _ => {},
+                    }
+                }
+
+                self.set_fg(fg);
+                self.set_bg(bg);
+            }, 
+
+            // Move Cursor Up
+            'A' => {
+                let mut n = 0;
+                for param in params {
+                    n = param[0];
+                }
+
+                self.row -= n as usize;
+            },
+
+            // Move Cursor Down
+            'B' => {
+                let mut n = 0;
+                for param in params {
+                    n = param[0];
+                }
+
+                self.row += n as usize;
+            },
+
+            // Move Cursor Forward
+            'C' => {
+                let mut n = 0;
+                for param in params {
+                    n = param[0];
+                }
+
+                self.column += n as usize;
+            },
+
+            // Move Cursor Back
+            'D' => {
+                let mut n = 0;
+                for param in params {
+                    n = param[0];
+                }
+
+                self.column -= n as usize;
+            },
+
+
+
+
+
+            _ => {}
+        }
+    }
+}
+
+
+
