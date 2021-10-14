@@ -2,10 +2,12 @@ use core::fmt::Write;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use vte::{Parser, Perform};
-use crate::outb;
+use crate::{outb, utils::KString};
 
 use super::vga::{self, ColorAttrib, get_char, put_char};
 pub use super::vga::Color16;
+
+pub const NEWLINE: KString = "\r\n";
 
 
 lazy_static! {

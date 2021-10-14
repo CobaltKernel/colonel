@@ -1,9 +1,10 @@
 use bootloader::BootInfo;
 
 use crate::utils::KernelResult;
+use crate::init;
 
 pub fn boot(_info: &'static BootInfo) {
-    crate::init!(_test_init);
+    init!(crate::arch::i386::interrupts::init);
 }
 
 #[macro_export]

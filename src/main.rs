@@ -3,6 +3,7 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(colonel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(abi_x86_interrupt)]
 
 use colonel::{log, printk, size_of};
 

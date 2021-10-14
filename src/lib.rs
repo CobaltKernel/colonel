@@ -3,10 +3,12 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(abi_x86_interrupt)]
 
 pub mod sys;
 pub mod utils;
 mod boot;
+mod arch;
 
 
 pub use boot::boot;
@@ -75,10 +77,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cfg(not(test))]
 #[panic_handler]
-fn _panic(_info: &PanicInfo) -> ! {
-    use sys::tty::TTY;
-
-    let mut term = TTY::new();
-    term.print_str("PANIC\r\n");
+fn _panic(info: &PanicInfo) -> ! {
+    eprintk!("Panic: {}", info);
     loop {}
 }
